@@ -1,0 +1,38 @@
+{
+  "name": "vulnerable-banking-app",
+  "version": "1.0.0",
+  "description": "Vulnerable banking application for security testing",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"No tests configured\" && exit 0"
+  },
+  "keywords": [
+    "banking",
+    "express",
+    "vulnerable",
+    "security-testing"
+  ],
+  "author": "Security Testing Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.19",
+    "jsonwebtoken": "8.5.1",
+    "axios": "0.21.1",
+    "mongoose": "5.12.0",
+    "bcrypt": "5.0.0",
+    "cookie-parser": "1.4.5",
+    "dotenv": "8.2.0",
+    "body-parser": "1.19.0",
+    "ejs": "3.1.5",
+    "mysql": "2.18.1",
+    "express-session": "1.17.1",
+    "validator": "13.5.2",
+    "morgan": "1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "2.0.7"
+  }
+}

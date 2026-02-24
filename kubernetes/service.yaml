@@ -1,0 +1,110 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: banking-service
+  namespace: default
+  labels:
+    app: banking
+spec:
+  # VULNERABILITY: Using LoadBalancer exposes to internet
+  type: LoadBalancer
+
+  # VULNERABILITY: No network policies to restrict access
+
+  selector:
+    app: banking
+
+  ports:
+  - name: http
+    port: 80
+    targetPort: 3000
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: 3000
+    protocol: TCP
+  - name: ssh  # VULNERABILITY: Exposing SSH
+    port: 22
+    targetPort: 22
+    protocol: TCP
+  - name: mysql  # VULNERABILITY: Exposing MySQL
+    port: 3306
+    targetPort: 3306
+    protocol: TCP
+  - name: mongodb  # VULNERABILITY: Exposing MongoDB
+    port: 27017
+    targetPort: 27017
+    protocol: TCP
+
+  # VULNERABILITY: Allowing external traffic from anywhere
+  externalTrafficPolicy: Cluster
+
+  # VULNERABILITY: No session affinity for security
+  sessionAffinity: None
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: banking-ingress
+  namespace: default
+  annotations:
+    # VULNERABILITY: No TLS/SSL certificate
+    # VULNERABILITY: No rate limiting
+    # VULNERABILITY: No WAF rules
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  # VULNERABILITY: No TLS configuration
+  # tls:
+  # - hosts:
+  #   - banking.example.com
+  #   secretName: banking-tls
+
+  rules:
+  - host: banking.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: banking-service
+            port:
+              number: 80
+
+  # VULNERABILITY: No authentication required
+  # VULNERABILITY: No IP whitelisting
+  # VULNERABILITY: Accessible from internet without restrictions
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: banking-config
+  namespace: default
+data:
+  # VULNERABILITY: Sensitive configuration in ConfigMap (not encrypted)
+  database_host: "mysql-production.cluster.local"
+  database_name: "banking_production"
+  database_user: "admin"
+  redis_host: "redis-production.cluster.local"
+  api_endpoint: "https://api.banking.com"
+  # VULNERABILITY: API keys in ConfigMap
+  stripe_public_key: "pk_live_51HxYz2ABCdefghijk1234567890"
+  google_analytics_id: "UA-123456789-1"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: banking-data
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany  # VULNERABILITY: Multiple pods can write
+  resources:
+    requests:
+      storage: 10Gi
+  # VULNERABILITY: No storage class specified
+  # VULNERABILITY: No encryption at rest configured
+  # storageClassName: encrypted-storage

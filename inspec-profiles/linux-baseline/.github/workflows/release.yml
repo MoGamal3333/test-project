@@ -1,0 +1,12 @@
+---
+name: New release
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  generate_changelog:
+    uses: dev-sec/.github/.github/workflows/baseline-release.yml@main

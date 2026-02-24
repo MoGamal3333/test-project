@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+
+# VULNERABILITY: .env NOT in dockerignore - secrets will be copied to image!
+# .env
+
+# VULNERABILITY: config files with secrets NOT ignored
+# config/
+
+.DS_Store
+*.log

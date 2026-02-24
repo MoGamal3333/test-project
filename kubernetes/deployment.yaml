@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-banking-app
+  namespace: default
+  labels:
+    app: banking
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: banking
+  template:
+    metadata:
+      labels:
+        app: banking
+    spec:
+      # VULNERABILITY: Using host network
+      hostNetwork: true
+
+      # VULNERABILITY: Using host PID namespace
+      hostPID: true
+
+      # VULNERABILITY: Using host IPC namespace
+      hostIPC: true
+
+      # VULNERABILITY: No pod security policy
+      # VULNERABILITY: No service account specified (uses default)
+
+      containers:
+      - name: banking-app
+        image: vulnerable-banking:latest  # VULNERABILITY: Using :latest tag
+        imagePullPolicy: Always  # VULNERABILITY: Always pull can cause issues
+
+        # VULNERABILITY: Running as root (runAsUser: 0)
+        securityContext:
+          runAsUser: 0  # CRITICAL: Running as root
+          runAsGroup: 0
+          privileged: true  # CRITICAL: Privileged container
+          allowPrivilegeEscalation: true  # VULNERABILITY: Allows privilege escalation
+          readOnlyRootFilesystem: false  # VULNERABILITY: Writable root filesystem
+          capabilities:
+            add:
+              - ALL  # CRITICAL: Adding all capabilities
+              - SYS_ADMIN
+              - NET_ADMIN
+              - SYS_PTRACE
+
+        # VULNERABILITY: No resource limits or requests
+        # resources:
+        #   limits:
+        #     cpu: "1"
+        #     memory: "512Mi"
+        #   requests:
+        #     cpu: "500m"
+        #     memory: "256Mi"
+
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        - containerPort: 22  # VULNERABILITY: SSH exposed
+          name: ssh
+        - containerPort: 3306  # VULNERABILITY: MySQL exposed
+          name: mysql
+
+        # VULNERABILITY: Hardcoded secrets in environment variables
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: AWS_ACCESS_KEY_ID
+          value: "TEST_AWS_ACCESS_KEY_ID_EXAMPLE_ONLY"  # CRITICAL: Hardcoded AWS key
+        - name: AWS_SECRET_ACCESS_KEY
+          value: "TEST_AWS_SECRET_ACCESS_KEY_EXAMPLE_ONLY"  # CRITICAL: Hardcoded secret
+        - name: DATABASE_PASSWORD
+          value: "SuperSecret123"  # VULNERABILITY: Hardcoded password
+        - name: JWT_SECRET
+          value: "my-jwt-secret-key-12345"  # VULNERABILITY: Hardcoded JWT secret
+        - name: ADMIN_PASSWORD
+          value: "Admin123!@#"  # VULNERABILITY: Hardcoded admin password
+        - name: MYSQL_ROOT_PASSWORD
+          value: "rootpassword123"
+        - name: MONGODB_URI
+          value: "mongodb://admin:MongoPass123@mongodb:27017/banking"
+
+        # VULNERABILITY: Mounting sensitive host paths
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock  # CRITICAL: Docker socket mounted
+        - name: host-root
+          mountPath: /host  # CRITICAL: Host root filesystem mounted
+        - name: etc-passwd
+          mountPath: /etc/passwd  # VULNERABILITY: Host passwd mounted
+        - name: secrets
+          mountPath: /secrets
+          readOnly: false  # VULNERABILITY: Secrets not read-only
+
+        # VULNERABILITY: No liveness probe
+        # VULNERABILITY: No readiness probe
+        # VULNERABILITY: No startup probe
+
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 3000
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+
+        # readinessProbe:
+        #   httpGet:
+        #     path: /ready
+        #     port: 3000
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+
+      # VULNERABILITY: Mounting sensitive host volumes
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock  # CRITICAL: Docker socket
+          type: Socket
+      - name: host-root
+        hostPath:
+          path: /  # CRITICAL: Entire host filesystem
+          type: Directory
+      - name: etc-passwd
+        hostPath:
+          path: /etc/passwd
+          type: File
+      - name: secrets
+        secret:
+          secretName: banking-secrets
+          defaultMode: 0777  # VULNERABILITY: Permissive secret permissions
+
+      # VULNERABILITY: No node selector for security
+      # VULNERABILITY: No pod anti-affinity
+      # VULNERABILITY: No tolerations defined
+
+      # VULNERABILITY: Automount service account token enabled (default)
+      automountServiceAccountToken: true
+
+      # VULNERABILITY: No DNS policy specified
+      # VULNERABILITY: No security context at pod level
+
+      # securityContext:
+      #   runAsNonRoot: true
+      #   runAsUser: 1000
+      #   fsGroup: 1000
+      #   seccompProfile:
+      #     type: RuntimeDefault
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: banking-secrets
+  namespace: default
+type: Opaque
+# VULNERABILITY: Secrets stored as plain base64
+data:
+  aws-access-key: VEVTVF9BV1NfS0VZX05PVF9SRUFM  # base64 of TEST_AWS_KEY_NOT_REAL
+  aws-secret-key: VEVTVF9BV1NfU0VDUkVUX05PVF9SRUFMX0RPX05PVF9VU0U=  # base64 of TEST_AWS_SECRET_NOT_REAL_DO_NOT_USE
+  database-password: U3VwZXJTZWNyZXQxMjM=
+  jwt-secret: bXktand0LXNlY3JldC1rZXktMTIzNDU=
+  admin-password: QWRtaW4xMjMhQCM=
+
+# Summary of Kubernetes vulnerabilities:
+# 1. hostNetwork: true - Using host network namespace
+# 2. hostPID: true - Using host PID namespace
+# 3. hostIPC: true - Using host IPC namespace
+# 4. privileged: true - Running privileged containers
+# 5. runAsUser: 0 - Running as root
+# 6. allowPrivilegeEscalation: true
+# 7. capabilities: add: ALL - All capabilities added
+# 8. No resource limits or requests
+# 9. No readinessProbe or livenessProbe
+# 10. Hardcoded secrets in environment variables
+# 11. Using :latest image tag
+# 12. Mounting /var/run/docker.sock
+# 13. Mounting host root filesystem
+# 14. Mounting /etc/passwd from host
+# 15. readOnlyRootFilesystem: false
+# 16. Secrets with permissive permissions (0777)
+# 17. No pod security policy
+# 18. No network policies
+# 19. automountServiceAccountToken: true
+# 20. No seccomp profile
+# 21. No AppArmor profile
+# 22. Exposing SSH and MySQL ports

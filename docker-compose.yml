@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # VULNERABILITY: Privileged container
+  banking-app:
+    build: .
+    container_name: vulnerable-banking-app
+    # VULNERABILITY: Privileged mode enabled
+    privileged: true
+    # VULNERABILITY: Using host network mode
+    network_mode: host
+    ports:
+      - "3000:3000"
+      - "22:22"  # VULNERABILITY: Exposing SSH
+    # VULNERABILITY: Mounting sensitive host paths
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # CRITICAL: Docker socket mounted
+      - /etc/passwd:/etc/passwd  # VULNERABILITY: Mounting host passwd file
+      - /etc/shadow:/etc/shadow  # CRITICAL: Mounting host shadow file
+      - ./:/app
+    # VULNERABILITY: Hardcoded secrets in environment
+    environment:
+      - NODE_ENV=production
+      - AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      - DATABASE_PASSWORD=SuperSecret123
+      - JWT_SECRET=my-jwt-secret-key-12345
+      - MYSQL_ROOT_PASSWORD=rootpassword123
+      - ADMIN_PASSWORD=Admin123!@#
+    # VULNERABILITY: Running as root (no user specified)
+    # VULNERABILITY: No resource limits
+    # VULNERABILITY: No security_opt set
+    # VULNERABILITY: Capabilities not dropped
+    cap_add:
+      - ALL  # VULNERABILITY: Adding all capabilities
+    # VULNERABILITY: No read-only root filesystem
+    # read_only: true
+    # VULNERABILITY: No tmpfs mounts for sensitive data
+    restart: always
+
+  # Vulnerable MySQL database
+  mysql:
+    image: mysql:5.7  # VULNERABILITY: Outdated MySQL version
+    container_name: banking-mysql
+    privileged: true  # VULNERABILITY: Privileged container
+    network_mode: host  # VULNERABILITY: Host networking
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword123  # VULNERABILITY: Weak password
+      - MYSQL_DATABASE=banking_db
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin123  # VULNERABILITY: Hardcoded weak password
+    volumes:
+      - /var/lib/mysql:/var/lib/mysql  # VULNERABILITY: Mounting to host
+    ports:
+      - "3306:3306"  # VULNERABILITY: Database exposed
+    # VULNERABILITY: No resource limits
+    # VULNERABILITY: No healthcheck
+
+  # Vulnerable MongoDB
+  mongodb:
+    image: mongo:4.0  # VULNERABILITY: Outdated MongoDB version
+    container_name: banking-mongo
+    privileged: true
+    network_mode: host
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=MongoPass123  # VULNERABILITY: Weak password
+    volumes:
+      - /data/db:/data/db
+    ports:
+      - "27017:27017"  # VULNERABILITY: MongoDB exposed to host
+    # VULNERABILITY: No authentication required in mongo URI
+
+  # Vulnerable Redis
+  redis:
+    image: redis:alpine  # Using alpine but still vulnerable config
+    container_name: banking-redis
+    privileged: true
+    network_mode: host
+    command: redis-server --requirepass RedisPass123  # VULNERABILITY: Weak password in command
+    ports:
+      - "6379:6379"
+    volumes:
+      - /var/lib/redis:/data
+
+  # Admin panel with vulnerabilities
+  adminer:
+    image: adminer:latest  # VULNERABILITY: Using latest tag
+    container_name: db-admin
+    privileged: true
+    network_mode: host
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=mysql
+    # VULNERABILITY: Database admin panel exposed without authentication
+
+# VULNERABILITY: No network segmentation
+# VULNERABILITY: All containers on host network
+# VULNERABILITY: No secrets management (using plain text env vars)
+# VULNERABILITY: No security scanning in CI/CD
+# VULNERABILITY: No logging/monitoring configuration
+
+# Summary of vulnerabilities:
+# 1. Privileged containers (privileged: true)
+# 2. Host network mode (network_mode: host)
+# 3. Docker socket mounted (/var/run/docker.sock)
+# 4. Sensitive host files mounted (/etc/passwd, /etc/shadow)
+# 5. Hardcoded secrets in environment variables
+# 6. No resource limits (cpu, memory)
+# 7. No security options (security_opt)
+# 8. All capabilities added (cap_add: ALL)
+# 9. No read-only root filesystem
+# 10. Outdated images (MySQL 5.7, MongoDB 4.0)
+# 11. Using :latest tags
+# 12. Database services exposed to host network
+# 13. Weak passwords
+# 14. No healthchecks
+# 15. No container user specified (running as root)
